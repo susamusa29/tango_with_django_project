@@ -19,9 +19,12 @@ from django.conf.urls.static import static
 from django.urls import path
 from django.urls import include 
 from rango import views
+from rango import forms
 
 urlpatterns = [
     path('', views.index, name='index'),
     path('rango/', include('rango.urls')),
     path('admin/', admin.site.urls),
+    path('about/', views.about, name='about'),
+    path('category/<slug:category_name_slug>/', views.show_category, name='show_category'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
