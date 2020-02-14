@@ -7,6 +7,11 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from rango import forms
 from rango.forms import UserForm, UserProfileForm
+from django.contrib.auth import authenticate, login, logout
+from django.http import HttpResponse
+from django.urls import reverse
+from django.shortcuts import redirect
+from django.contrib.auth.decorators import login_required
 
 # Create your views here.
 def index(request):
@@ -89,11 +94,8 @@ def show_page(request, category_name_slug):
 
     # Go render the response and return it to the client.
     return render(request, "page.url", context=context_dict)
-
+@login_required
 def add_category(request):
- #   context = RequestContext(request)
-
-
     form = CategoryForm()
 
     #A HTTP POST?
@@ -115,7 +117,7 @@ def add_category(request):
         # Will handle the bad form, new form, or no form supplied cases.
         # Render the form with error messages (if any).
     return render(request, 'rango/add_category.html', {'form':form})
-
+@login_required
 def add_page(request, category_name_slug):
 
     try:
@@ -203,3 +205,55 @@ def register(request):
 
     # Render the template depending on the context.
     return render(request, 'rango/register.html', context = {'user_form': user_form,'profile_form': profile_form,'registered': registered})
+
+def user_login(request):
+    # If the request is a HTTP POST, try to pull out therelevant infromation.
+    if request.method == 'POST':
+        # Gather the username and password provided by the user.
+        # This information is obtained from the login form. 
+        # We use request.POST['<variable>'], because the
+        # request.POST.get('<variable>') returns None if the 
+        # value does not exist, while request.POST['<variable>']
+        # will raise a KeyError exception.
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+        # Use Django's machinery to attempt to see if the username/password
+        # combination is valid - a User object is returned if it is.
+        user = authenticate(username=username, password=password)
+
+        # if we have a User object, the details are correct.
+        # if None (Python's way of representing the absence of a value), no user
+        # with matching credentials was found.
+        if user:
+            #Is the account active? It could have been disabled.
+            if user.is_active:
+                # if the account is valid and active, we can log the user in
+                # We'll send the user back to the homepage
+                login(request, user)
+                return redirect(reverse('rango:index'))
+            else:
+                # An inactive account was used - no logging in!
+                return HttpResponse("Your Rango account is disabled.")
+        else:
+            #Bad login details were provided.So we can't log the user in.
+            print(f"Invalid login details: {username}, {password}")
+            return HttpResponse("Invalid login details supplied.") 
+
+        # The request is no a HTTP POST, so display the login form.
+        # This scenario will most likely be a HTTP GET.
+    else:
+        # No context variables to pass to the template system, hence the 
+        # blank dictionary object..
+        return render(request, 'rango/login.html')
+
+@login_required
+def restricted(request):
+    return render(request, 'rango/restricted.html')
+
+@login_required
+def user_logout(request):
+    # Since we know the user is logged in, we can just log them out.
+    logout(request)
+    # Take the user back to the homepage.
+    return redirect(reverse('rango:index'))
